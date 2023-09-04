@@ -8,4 +8,4 @@ List of chapters and pages from the Adventures of Sherlock Holmes
 - Chapters
 
 ## Proposed Layout
-![Layout](../docs/Screenshot 2023-09-04 144650.png)
+![Layout](pic.png)
