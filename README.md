@@ -3,4 +3,4 @@
 ## Directory for the book, "The Adventures of Sherlock Holmes" by Arthur Conan Doyle.
 ## https://a-basic-web-server.onrender.com/
 
-"Hello from Beizeng!"
+"Beizeng Can handle rejection"
