@@ -39,8 +39,7 @@ const chapterIds = [
   'ch9',
   'ch10',
   'ch11',
-  'ch12',
-    
+  'ch12'
 ]
 
 
@@ -62,8 +61,6 @@ INSERT INTO chapters (chapterName, chapterText) VALUES
 const insertPages = `INSERT INTO pages (pageNum) VALUES
 `
 
-
-
 const gobanConfig = {
   size: 19,
   theme: 'classic',
@@ -73,12 +70,12 @@ const gobanConfig = {
 }
 
 // Utility functions ///////////////////////////////////////
-const extractTitle = function (root, id) {
-  const title = root.querySelector(`#${id} .main`).text
+const extractName = function (root, id) {
+  const chapterName = root.querySelector(`#${id} .main`).text
   return title
 }
 
-const extractBody = function (root, id, pruneChildrenSelector) {
+const extractText = function (root, id, pruneChildrenSelector) {
   const bodyNode = root.querySelector(`#${id} .divBody`)
 
   if (pruneChildrenSelector) {
@@ -88,16 +85,6 @@ const extractBody = function (root, id, pruneChildrenSelector) {
     })
   }
 
-  // The <img> tags point to the wrong directory, so we
-  // need to change them here.
-  bodyNode.querySelectorAll('img').forEach(
-    (image) => {
-      const oldSrc = image.getAttribute('src')
-      const oldSrcTokens = oldSrc.split('/')
-      const newSrc = `/images/book/${oldSrcTokens[oldSrcTokens.length - 1]}`
-      image.setAttribute('src', newSrc)
-    }
-  )
 
   // Return HTML with the line endings normalized to Unix.
   bodyNode.innerHTML = bodyNode.innerHTML.replaceAll('\r\n', '\n')
@@ -105,45 +92,6 @@ const extractBody = function (root, id, pruneChildrenSelector) {
   return bodyNode
 }
 
-const extractMoves = function (output, player, moveSrc) {
-  // Remove newline.
-  const withDots = moveSrc.trim()
-
-  // Remove periods.
-  const clean = withDots.replaceAll('.', '')
-
-  const lines = clean.split(', ')
-  let currentLetter
-
-  // Skip the first token.
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i].indexOf(' ') >= 0) {
-      const tokens = lines[i].split(' ')
-      currentLetter = tokens[0]
-      output[currentLetter + tokens[1]] = player
-    } else {
-      // The line only contains a number.
-      output[currentLetter + lines[i]] = player
-    }
-  }
-}
-
-const addSolution = function (problem, solutionSrc) {
-  const result = Object.assign({}, problem.moves)
-  const markers = {}
-  const noNewline = solutionSrc.replaceAll('\r\n', '')
-  const compact = noNewline.replaceAll(' ', '')
-
-  let move = 1
-  let who = problem.toPlay
-  const moves = compact.split(',')
-  moves.forEach((m) => {
-    result[m] = who
-    markers[m] = (move++).toString()
-    who = (who === 'white') ? 'black' : 'white'
-  })
-  problem.solutions.push(serialize(gobanConfig, result, markers))
-}
 
 // Conversion //////////////////////////////////////////////
 const src = readFileSync(srcPath, 'utf8')
@@ -171,81 +119,6 @@ chapterIds.forEach(
   }
 )
 
-// Extract the problems…
-const pRoot = domRoot.querySelector(`#${problemChapterId} .divBody`)
-
-// First, extract the goals.
-const goals = []
-const goalNodes = pRoot.querySelectorAll('h3.main > span.sc')
-goalNodes.forEach((node) => { goals.push(node.text) })
-assert.equal(goals.length, 7, 'Expected seven goals.')
-
-// Second, extract each problem group that corresponds to a goal…
-const problemGroups = []
-
-const groupNodes = pRoot.querySelectorAll('.div2 > .divBody')
-const iTagRegExp = /<\/?i>/
-let goalId = 1 // SQL ids start at 1.
-
-// …and then extract the problems from that group.
-groupNodes.forEach((node) => {
-  const problems = []
-  const descriptionNodes = node.querySelectorAll('p:not([class])')
-  descriptionNodes.forEach((n) => {
-    // All problem paragraphs have a single <br> tag.
-    if (!n.querySelector('br')) return
-
-    const number = n.querySelector('b').text
-    const toPlay = n.querySelector('i').text.toLowerCase()
-    const rows = n.innerHTML.replace(iTagRegExp, '')
-    const lines = rows.split('<br>')
-    const moves = {}
-    extractMoves(moves, 'white', lines[0])
-    extractMoves(moves, 'black', lines[1])
-    const svg = serialize(gobanConfig, moves, {})
-    problems.push({
-      goalId,
-      number,
-      toPlay,
-      moves,
-      problem: svg,
-      solutions: []
-    })
-  })
-  // Skip the answer section.
-  if (problems.length > 0) problemGroups.push(problems)
-  goalId++
-})
-assert.equal(problemGroups.length, 7, 'Expected seven problem groups.')
-
-// Finally, extract the solutions to each problem.
-const ors = /,? or /g
-const sRoots = pRoot.querySelectorAll('.div3')
-let groupId = 0
-sRoots.forEach((node) => {
-  const solutionNodes = node.querySelectorAll('p')
-  let problemId = 0
-  solutionNodes.forEach((n) => {
-    if (!problemGroups[groupId][problemId]) return
-
-    const noPeriods = n.text.split('.')
-    const solutions = noPeriods[1].split(ors)
-
-    solutions.forEach((s) => {
-      addSolution(problemGroups[groupId][problemId], s.trim())
-    })
-    problemId++
-  })
-
-  groupId++
-})
-
-// Extract problem chapter text after extracting the
-// problems since we destructively alter the DOM.
-chapters.push({
-  title: extractTitle(domRoot, problemChapterId),
-  body: extractBody(domRoot, problemChapterId, '.div2')
-})
 
 // Output the data as SQL.
 const fd = openSync(dstPath, 'w')
@@ -257,22 +130,4 @@ chapters.slice(1).forEach((data) => {
 })
 writeFileSync(fd, ';\n\n')
 
-// Output the problem types.
-writeFileSync(fd, insertProblemTypesSql)
-writeFileSync(fd, `  ('${goals[0]}')`)
-goals.slice(1).forEach((data) => {
-  const value = `,\n  ('${data}')`
-  writeFileSync(fd, value)
-})
-writeFileSync(fd, ';\n\n')
-
-// Output the problems.
-problemGroups.forEach((problems) => {
-  writeFileSync(fd, insertProblemsSql)
-  writeFileSync(fd, `  (${problems[0].goalId}, '${problems[0].number}', '${problems[0].toPlay}', '${problems[0].problem}', '${problems[0].solutions.join('<p>OR</p>')}')`)
-  problems.forEach((problem) => {
-    writeFileSync(fd, `,\n  (${problem.goalId}, '${problem.number}', '${problem.toPlay}', '${problem.problem}', '${problem.solutions.join('<p>OR</p>')}')`)
-  })
-  writeFileSync(fd, ';\n\n')
-})
 closeSync(fd)
