@@ -1,0 +1,14 @@
+<%- include('../shared/header.ejs') _%>
+<article>
+  <h2><%= title %></h2>
+  <%- body %>
+  <footer>
+  <% if (id > 1) { %>
+    <a class="step" href="/guide/<%= (id - 1) %>">Prev</a>
+  <% } %>
+  <% if (id < total) { %>
+    <a class="step" href="/guide/<%= (id + 1) %>">Next</a>
+  <% } %>
+  </footer>
+</article>
+<%- include('../shared/footer.ejs') _%>

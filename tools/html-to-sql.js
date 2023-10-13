@@ -28,15 +28,15 @@ const { serialize } = pkg
 const srcPath = 'data/SHHTML.html'
 const dstPath = 'docs/generated-schema.sql'
 const chapterIds = [
-  'ch1',
-  'ch2',
-  'ch3',
-  'ch4',
-  'ch5',
-  'ch6',
-  'ch7',
-  'ch8',
-  'ch9',
+  'ch01', 
+  'ch02', 
+  'ch03', 
+  'ch04', 
+  'ch05', 
+  'ch06', 
+  'ch07', 
+  'ch08', 
+  'ch09', 
   'ch10',
   'ch11',
   'ch12'
@@ -51,15 +51,10 @@ CREATE TABLE chapters (
   chapterText TEXT NOT NULL
 );
 
-CREATE TABLE pages (
-  pageNum SERIAL PRIMARY KEY
-);
 
 INSERT INTO chapters (chapterName, chapterText) VALUES
 `
 
-const insertPages = `INSERT INTO pages (pageNum) VALUES
-`
 
 const gobanConfig = {
   size: 19,
@@ -70,13 +65,14 @@ const gobanConfig = {
 }
 
 // Utility functions ///////////////////////////////////////
-const extractName = function (root, id) {
-  const chapterName = root.querySelector(`#${id} .main`).text
+const extractTitle = function (root, id) {
+  const title = root.querySelector(`#${id} h2`).text
   return title
 }
 
-const extractText = function (root, id, pruneChildrenSelector) {
-  const bodyNode = root.querySelector(`#${id} .divBody`)
+const extractBody = function (root, id, pruneChildrenSelector) {
+
+  const bodyNode = root.querySelector(`#${id}`)
 
   if (pruneChildrenSelector) {
     const children = bodyNode.querySelectorAll(pruneChildrenSelector)
@@ -97,11 +93,6 @@ const extractText = function (root, id, pruneChildrenSelector) {
 const src = readFileSync(srcPath, 'utf8')
 const domRoot = parse(src)
 
-// Remove pageNum nodes
-const pageNums = domRoot.querySelectorAll('.pageNum')
-pageNums.forEach(
-  (element) => element.remove()
-)
 
 // Extract guide chapters.
 const chapters = []

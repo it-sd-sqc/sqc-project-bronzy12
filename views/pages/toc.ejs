@@ -1,0 +1,11 @@
+<%- include('../shared/header.ejs') _%>
+<article>
+  <h2>Table of contents</h2>
+  <ol>
+    <% chapters.forEach((chapter) => { %>
+      <li><a href="/guide/<%= chapter.id %>"><%= chapter.title %></a></li>
+    <% }) %>
+  </ol>
+  <a class="step" href="/guide/1">Next</a>
+</article>
+<%- include('../shared/footer.ejs') _%>
